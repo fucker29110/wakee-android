@@ -7,25 +7,45 @@
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:793164138726:android:REPLACE_WITH_YOUR_ANDROID_APP_ID",
+        "mobilesdk_app_id": "1:793164138726:android:500eb9bf59a9ceef0d1327",
         "android_client_info": {
           "package_name": "com.wakee.app"
         }
       },
       "oauth_client": [
         {
-          "client_id": "793164138726-REPLACE_WITH_ANDROID_CLIENT_ID.apps.googleusercontent.com",
+          "client_id": "793164138726-b6qvmh78q115drv2ukj35219c37t525c.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.wakee.app",
+            "certificate_hash": "45f927667552dd12990ac567305fe6ca9c406f1b"
+          }
+        },
+        {
+          "client_id": "793164138726-eflerc3eb9k9qpj0c93m7udn198rhrpp.apps.googleusercontent.com",
           "client_type": 3
         }
       ],
       "api_key": [
         {
-          "current_key": "AIzaSyDpilxZzX1laJiVvZucacTwX5lOMI-MR10"
+          "current_key": "AIzaSyATmGu10memY22FlGS7jIVz5T0wuIW_79U"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "793164138726-eflerc3eb9k9qpj0c93m7udn198rhrpp.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "793164138726-envf89kchnma0nsj4e2q2a2bl27veoan.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.wakee.app"
+              }
+            }
+          ]
         }
       }
     }
