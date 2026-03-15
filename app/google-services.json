@@ -1,0 +1,34 @@
+{
+  "project_info": {
+    "project_number": "793164138726",
+    "project_id": "alarmx-app-7afe1",
+    "storage_bucket": "alarmx-app-7afe1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:793164138726:android:REPLACE_WITH_YOUR_ANDROID_APP_ID",
+        "android_client_info": {
+          "package_name": "com.wakee.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "793164138726-REPLACE_WITH_ANDROID_CLIENT_ID.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDpilxZzX1laJiVvZucacTwX5lOMI-MR10"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
