@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import javax.inject.Inject
 
 @HiltViewModel
@@ -103,6 +104,18 @@ class AuthViewModel @Inject constructor(
         authRepository.signOut()
         _currentUser.value = null
         _isLoggedIn.value = false
+    }
+
+    fun deleteAccount() {
+        viewModelScope.launch {
+            try {
+                FirebaseAuth.getInstance().currentUser?.delete()?.await()
+                _currentUser.value = null
+                _isLoggedIn.value = false
+            } catch (e: Exception) {
+                _error.value = e.message
+            }
+        }
     }
 
     fun clearError() {

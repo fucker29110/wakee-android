@@ -29,7 +29,7 @@ class AuthRepository @Inject constructor(
             uid = user.uid,
             displayName = user.displayName ?: "",
             email = user.email,
-            photoURL = user.photoURL?.toString()
+            photoURL = user.photoUrl?.toString()
         )
     }
 
@@ -40,7 +40,7 @@ class AuthRepository @Inject constructor(
             uid = user.uid,
             displayName = user.displayName ?: email.substringBefore("@"),
             email = user.email,
-            photoURL = user.photoURL?.toString()
+            photoURL = user.photoUrl?.toString()
         )
     }
 

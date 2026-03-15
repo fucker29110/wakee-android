@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
         handleDeepLink(intent)
         setContent {
             WakeeTheme {
-                WakeeNavGraph(deepLinkManager = deepLinkManager)
+                WakeeNavGraph()
             }
         }
     }

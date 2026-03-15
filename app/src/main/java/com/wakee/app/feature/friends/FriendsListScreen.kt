@@ -23,6 +23,7 @@ import coil.compose.AsyncImage
 import com.wakee.app.data.model.AppUser
 import com.wakee.app.data.model.FollowRequest
 import com.wakee.app.ui.theme.*
+import androidx.compose.material3.TabRowDefaults.tabIndicatorOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
