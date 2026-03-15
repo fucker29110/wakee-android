@@ -41,11 +41,14 @@ fun FriendProfileScreen(
     userId: String,
     onBack: () -> Unit,
     onChatClick: (String, String) -> Unit,
+    onFriendsListClick: (String) -> Unit = {},
+    onMutualFriendsClick: (String) -> Unit = {},
     viewModel: FriendProfileViewModel = hiltViewModel()
 ) {
     val user by viewModel.user.collectAsState()
     val isFriend by viewModel.isFriend.collectAsState()
     val friendCount by viewModel.friendCount.collectAsState()
+    val mutualFriendCount by viewModel.mutualFriendCount.collectAsState()
 
     LaunchedEffect(userId) {
         viewModel.loadUser(userId)
@@ -110,7 +113,24 @@ fun FriendProfileScreen(
 
                 Spacer(modifier = Modifier.height(12.dp))
 
-                Text("フレンド ${friendCount}人", fontSize = 14.sp, color = SecondaryText)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    TextButton(
+                        onClick = { onFriendsListClick(userId) }
+                    ) {
+                        Text("フレンド一覧", fontSize = 14.sp, color = Accent)
+                    }
+
+                    if (mutualFriendCount > 0) {
+                        TextButton(
+                            onClick = { onMutualFriendsClick(userId) }
+                        ) {
+                            Text("共通のフレンド ${mutualFriendCount}人", fontSize = 14.sp, color = Accent)
+                        }
+                    }
+                }
 
                 Spacer(modifier = Modifier.height(20.dp))
 
@@ -180,6 +200,9 @@ class FriendProfileViewModel @Inject constructor(
     private val _friendCount = MutableStateFlow(0)
     val friendCount: StateFlow<Int> = _friendCount.asStateFlow()
 
+    private val _mutualFriendCount = MutableStateFlow(0)
+    val mutualFriendCount: StateFlow<Int> = _mutualFriendCount.asStateFlow()
+
     private var targetUid = ""
 
     fun loadUser(uid: String) {
@@ -189,7 +212,10 @@ class FriendProfileViewModel @Inject constructor(
                 _user.value = userRepository.getUser(uid)
                 val myUid = authRepository.currentUid ?: return@launch
                 _isFriend.value = friendRepository.isFriend(myUid, uid)
-                _friendCount.value = friendRepository.getFriends(uid).size
+                val theirFriends = friendRepository.getFriends(uid)
+                _friendCount.value = theirFriends.size
+                val myFriends = friendRepository.getFriends(myUid)
+                _mutualFriendCount.value = theirFriends.toSet().intersect(myFriends.toSet()).size
             } catch (e: Exception) {
                 e.printStackTrace()
             }

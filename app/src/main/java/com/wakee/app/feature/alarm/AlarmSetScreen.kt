@@ -1,9 +1,9 @@
 package com.wakee.app.feature.alarm
 
 import android.Manifest
-import android.content.Context
-import android.media.MediaRecorder
-import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,6 +20,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -28,12 +29,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.core.net.toUri
 import androidx.hilt.navigation.compose.hiltViewModel
 import coil.compose.AsyncImage
 import com.wakee.app.data.model.AppUser
 import com.wakee.app.ui.theme.*
-import java.io.File
+import com.wakee.app.util.AudioRecordingService
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,11 +49,36 @@ fun AlarmSetScreen(
     val snoozeMin by viewModel.snoozeMin.collectAsState()
     val isSending by viewModel.isSending.collectAsState()
     val sendSuccess by viewModel.sendSuccess.collectAsState()
-    val isRecording by viewModel.isRecording.collectAsState()
     val audioUri by viewModel.audioUri.collectAsState()
 
     var showTimePicker by remember { mutableStateOf(false) }
     val context = LocalContext.current
+
+    // Audio recording service
+    val audioRecordingService = remember { AudioRecordingService(context) }
+    val isRecording by audioRecordingService.isRecording.collectAsState()
+    val isPlaying by audioRecordingService.isPlaying.collectAsState()
+    val recordingSeconds by audioRecordingService.recordingSeconds.collectAsState()
+    val recordedUri by audioRecordingService.recordedUri.collectAsState()
+
+    // Sync recorded URI to ViewModel
+    LaunchedEffect(recordedUri) {
+        viewModel.setAudioUri(recordedUri)
+    }
+
+    // Release resources on dispose
+    DisposableEffect(Unit) {
+        onDispose { audioRecordingService.release() }
+    }
+
+    // Permission launcher
+    val permissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (granted) {
+            audioRecordingService.startRecording()
+        }
+    }
 
     LaunchedEffect(sendSuccess) {
         if (sendSuccess) onAlarmSent()
@@ -221,6 +246,12 @@ fun AlarmSetScreen(
 
             // Voice recording
             Text("ボイスメッセージ（任意）", fontSize = 16.sp, fontWeight = FontWeight.Bold, color = PrimaryText)
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = "最大15秒",
+                fontSize = 12.sp,
+                color = SecondaryText
+            )
             Spacer(modifier = Modifier.height(8.dp))
 
             Card(
@@ -228,38 +259,145 @@ fun AlarmSetScreen(
                 shape = RoundedCornerShape(12.dp),
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Row(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
+                    horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    if (audioUri != null) {
-                        Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Success)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("録音済み", color = Success, fontSize = 14.sp)
-                        Spacer(modifier = Modifier.width(16.dp))
-                        TextButton(onClick = { viewModel.setAudioUri(null) }) {
-                            Text("削除", color = Danger, fontSize = 14.sp)
+                    when {
+                        // State: has recording
+                        audioUri != null && !isRecording -> {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Filled.CheckCircle, contentDescription = null, tint = Success)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("録音済み", color = Success, fontSize = 14.sp)
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                // Playback button
+                                IconButton(
+                                    onClick = {
+                                        if (isPlaying) {
+                                            audioRecordingService.stopPlayback()
+                                        } else {
+                                            audioRecordingService.startPlayback()
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPlaying) Icons.Filled.Stop else Icons.Filled.PlayArrow,
+                                        contentDescription = if (isPlaying) "停止" else "再生",
+                                        tint = Accent,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                                Text(
+                                    text = if (isPlaying) "再生中..." else "再生",
+                                    color = if (isPlaying) Accent else SecondaryText,
+                                    fontSize = 14.sp
+                                )
+                                Spacer(modifier = Modifier.weight(1f))
+                                // Delete button
+                                IconButton(
+                                    onClick = {
+                                        audioRecordingService.deleteRecording()
+                                        viewModel.setAudioUri(null)
+                                    }
+                                ) {
+                                    Icon(
+                                        Icons.Filled.Delete,
+                                        contentDescription = "削除",
+                                        tint = Danger,
+                                        modifier = Modifier.size(24.dp)
+                                    )
+                                }
+                                Text("削除", color = Danger, fontSize = 14.sp)
+                            }
                         }
-                    } else {
-                        IconButton(
-                            onClick = { /* Recording handled by Activity with permission */ }
-                        ) {
-                            Icon(
-                                Icons.Filled.Mic,
-                                contentDescription = "録音",
-                                tint = if (isRecording) Danger else Accent,
-                                modifier = Modifier.size(32.dp)
+                        // State: currently recording
+                        isRecording -> {
+                            // Pulsing mic icon
+                            val infiniteTransition = rememberInfiniteTransition(label = "pulse")
+                            val pulseScale by infiniteTransition.animateFloat(
+                                initialValue = 1f,
+                                targetValue = 1.3f,
+                                animationSpec = infiniteRepeatable(
+                                    animation = tween(600, easing = EaseInOut),
+                                    repeatMode = RepeatMode.Reverse
+                                ),
+                                label = "pulseScale"
+                            )
+
+                            Box(
+                                modifier = Modifier
+                                    .size(64.dp)
+                                    .scale(pulseScale)
+                                    .clip(CircleShape)
+                                    .background(Danger.copy(alpha = 0.2f))
+                                    .clickable { audioRecordingService.stopRecording() },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    Icons.Filled.Mic,
+                                    contentDescription = "録音停止",
+                                    tint = Danger,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "録音中  ${recordingSeconds}秒 / ${15}秒",
+                                color = Danger,
+                                fontSize = 14.sp,
+                                fontWeight = FontWeight.Medium
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
+                            // Progress bar
+                            LinearProgressIndicator(
+                                progress = { recordingSeconds / 15f },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .height(4.dp)
+                                    .clip(RoundedCornerShape(2.dp)),
+                                color = Danger,
+                                trackColor = Border,
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            TextButton(onClick = { audioRecordingService.stopRecording() }) {
+                                Icon(Icons.Filled.Stop, contentDescription = null, tint = PrimaryText, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text("録音停止", color = PrimaryText, fontSize = 14.sp)
+                            }
+                        }
+                        // State: no recording, not recording
+                        else -> {
+                            IconButton(
+                                onClick = {
+                                    permissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                                }
+                            ) {
+                                Icon(
+                                    Icons.Filled.Mic,
+                                    contentDescription = "録音",
+                                    tint = Accent,
+                                    modifier = Modifier.size(32.dp)
+                                )
+                            }
+                            Spacer(modifier = Modifier.height(4.dp))
+                            Text(
+                                text = "タップして録音",
+                                color = SecondaryText,
+                                fontSize = 14.sp
                             )
                         }
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = if (isRecording) "録音中..." else "タップして録音",
-                            color = if (isRecording) Danger else SecondaryText,
-                            fontSize = 14.sp
-                        )
                     }
                 }
             }

@@ -29,11 +29,14 @@ import androidx.navigation.navArgument
 import com.wakee.app.feature.alarm.AlarmSetScreen
 import com.wakee.app.feature.alarm.RingingScreen
 import com.wakee.app.feature.auth.LoginScreen
+import com.wakee.app.feature.auth.OnboardingScreen
 import com.wakee.app.feature.auth.AuthViewModel
 import com.wakee.app.feature.chat.ChatListScreen
 import com.wakee.app.feature.chat.ChatRoomScreen
+import com.wakee.app.feature.friends.FriendFriendsListScreen
 import com.wakee.app.feature.friends.FriendProfileScreen
 import com.wakee.app.feature.friends.FriendsListScreen
+import com.wakee.app.feature.friends.MutualFriendsListScreen
 import com.wakee.app.feature.home.HomeScreen
 import com.wakee.app.feature.home.PostDetailScreen
 import com.wakee.app.feature.home.StoryCreateModal
@@ -71,6 +74,13 @@ sealed class Screen(val route: String) {
     data object StoryView : Screen("story_view/{storyId}") {
         fun createRoute(storyId: String) = "story_view/$storyId"
     }
+    data object FriendFriends : Screen("friend_friends/{userId}") {
+        fun createRoute(userId: String) = "friend_friends/$userId"
+    }
+    data object MutualFriends : Screen("mutual_friends/{userId}") {
+        fun createRoute(userId: String) = "mutual_friends/$userId"
+    }
+    data object Onboarding : Screen("onboarding")
 }
 
 data class BottomNavItem(
@@ -95,6 +105,7 @@ fun WakeeNavGraph() {
     val authViewModel: AuthViewModel = hiltViewModel()
     val isLoggedIn by authViewModel.isLoggedIn.collectAsState()
     val isLoading by authViewModel.isLoading.collectAsState()
+    val currentUser by authViewModel.currentUser.collectAsState()
 
     if (isLoading) {
         Box(
@@ -106,15 +117,37 @@ fun WakeeNavGraph() {
         return
     }
 
+    val startDestination = when {
+        !isLoggedIn -> Screen.Login.route
+        currentUser?.onboardingCompleted == false -> Screen.Onboarding.route
+        else -> Screen.Main.route
+    }
+
     NavHost(
         navController = navController,
-        startDestination = if (isLoggedIn) Screen.Main.route else Screen.Login.route
+        startDestination = startDestination
     ) {
         composable(Screen.Login.route) {
             LoginScreen(
                 onLoginSuccess = {
-                    navController.navigate(Screen.Main.route) {
+                    val user = authViewModel.currentUser.value
+                    val dest = if (user?.onboardingCompleted == false) {
+                        Screen.Onboarding.route
+                    } else {
+                        Screen.Main.route
+                    }
+                    navController.navigate(dest) {
                         popUpTo(Screen.Login.route) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Screen.Onboarding.route) {
+            OnboardingScreen(
+                onComplete = {
+                    navController.navigate(Screen.Main.route) {
+                        popUpTo(Screen.Onboarding.route) { inclusive = true }
                     }
                 }
             )
@@ -250,6 +283,40 @@ fun MainScreen(
                     onBack = { navController.popBackStack() },
                     onChatClick = { chatId, otherUserId ->
                         navController.navigate(Screen.ChatRoom.createRoute(chatId, otherUserId))
+                    },
+                    onFriendsListClick = { uid ->
+                        navController.navigate(Screen.FriendFriends.createRoute(uid))
+                    },
+                    onMutualFriendsClick = { uid ->
+                        navController.navigate(Screen.MutualFriends.createRoute(uid))
+                    }
+                )
+            }
+
+            composable(
+                Screen.FriendFriends.route,
+                arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                FriendFriendsListScreen(
+                    userId = userId,
+                    onBack = { navController.popBackStack() },
+                    onUserClick = { uid ->
+                        navController.navigate(Screen.FriendProfile.createRoute(uid))
+                    }
+                )
+            }
+
+            composable(
+                Screen.MutualFriends.route,
+                arguments = listOf(navArgument("userId") { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString("userId") ?: ""
+                MutualFriendsListScreen(
+                    userId = userId,
+                    onBack = { navController.popBackStack() },
+                    onUserClick = { uid ->
+                        navController.navigate(Screen.FriendProfile.createRoute(uid))
                     }
                 )
             }
